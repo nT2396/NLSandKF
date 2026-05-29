@@ -11,7 +11,7 @@ rng(42);
 %% ===== 参数配置 =====
 f_c = 11.325e9;  c_light = 299792458;
 el_threshold = 10;
-max_iter_ekf = 3;
+max_iter_ekf = 15;
 sigma_dop = 10;   % Hz, 多普勒测量噪声
 
 %% ===== 加载卫星轨迹 =====
@@ -83,7 +83,7 @@ fprintf('Doppler 范围: %.0f ~ %.0f kHz\n\n', min(doppler(:))/1e3, max(doppler(
 
 %% ===== EKF 参数 =====
 R = sigma_dop^2;       % 测量噪声协方差
-sigma_p0 = 50e3;       % 初始位置不确定度 50km
+sigma_p0 = 10e3;       % 初始位置不确定度 10km
 sigma_v0 = 100;        % 初始速度不确定度 100 m/s
 
 P0 = blkdiag(sigma_p0^2 * eye(3), sigma_v0^2 * eye(3));
