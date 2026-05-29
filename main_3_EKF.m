@@ -100,32 +100,32 @@ for lev = 1:N_levels
                 rng(lev * 1000 + trial * 100 + k * 10 + sat_idx);
                 z = doppler(k, sat_idx) + sigma_dop * randn();
 
-                p_s = satPos{sat_idx}(k, :)';
-                v_s = satVel{sat_idx}(k, :)';
+                p_s = satPos{sat_idx}(k, :);    % 1×3 行向量
+                v_s = satVel{sat_idx}(k, :);
 
                 % IEKF: 迭代重线性化
                 for iter = 1:max_iter_ekf
-                    l_vec = p_s - x_post;
+                    l_vec = p_s - x_post;        % 1×3
                     dist  = norm(l_vec);
                     v_r   = dot(v_s, l_vec) / dist;
                     h_x   = -f_c / c_light * v_r;
 
                     % Jacobian (1×3), 复用 NLS 公式
-                    v_dot_l = dot(v_s, l_vec);
+                    v_dot_l = sum(v_s .* l_vec);
                     l_dot_term = (v_dot_l / dist^2) * l_vec;
-                    H = (f_c / (c_light * dist)) * (v_s - l_dot_term)';
+                    H = (f_c / (c_light * dist)) * (v_s - l_dot_term);
 
-                    % EKF Predict (首颗可见星时)
+                    % EKF Predict (每步首颗可见星时)
                     if iter == 1
                         x_pred = x_post;
                         P_pred = P_post + Q;
                     end
 
                     % EKF Update
-                    S_k = H * P_pred * H' + R;
-                    K   = P_pred * H' / S_k;
-                    nu  = z - h_x;
-                    x_post = x_pred + K * nu;
+                    S_k = H * P_pred * H' + R;   % scalar
+                    K   = P_pred * H' / S_k;      % 3×1
+                    nu  = z - h_x;                % scalar
+                    x_post = x_pred + (K * nu)';  % 1×3
                     P_post = (eye(3) - K * H) * P_pred;
                 end
             end
@@ -170,16 +170,16 @@ for k = 1:N_t
         rng(k * 10 + sat_idx);
         z = doppler(k, sat_idx) + sigma_demo * randn();
 
-        p_s = satPos{sat_idx}(k, :)';
-        v_s = satVel{sat_idx}(k, :)';
+        p_s = satPos{sat_idx}(k, :);    % 1×3
+        v_s = satVel{sat_idx}(k, :);
 
         for iter = 1:max_iter_ekf
             l_vec = p_s - x_post;
             dist  = norm(l_vec);
             h_x   = -f_c / c_light * dot(v_s, l_vec) / dist;
-            v_dot_l = dot(v_s, l_vec);
+            v_dot_l = sum(v_s .* l_vec);
             l_dot_term = (v_dot_l / dist^2) * l_vec;
-            H = (f_c / (c_light * dist)) * (v_s - l_dot_term)';
+            H = (f_c / (c_light * dist)) * (v_s - l_dot_term);
 
             if iter == 1
                 x_pred = x_post;
@@ -189,7 +189,7 @@ for k = 1:N_t
             S_k = H * P_pred * H' + R_demo;
             K   = P_pred * H' / S_k;
             nu  = z - h_x;
-            x_post = x_pred + K * nu;
+            x_post = x_pred + (K * nu)';
             P_post = (eye(3) - K * H) * P_pred;
         end
         meas_count = meas_count + 1;
