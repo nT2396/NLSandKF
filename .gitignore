@@ -1,0 +1,15 @@
+# MATLAB autosave
+*.asv
+*.m~
+
+# Large TLE dumps (>100KB)
+STARLINK_TLE*.txt
+Sat_tle.txt
+
+# Generated trajectory .mat files (large)
+timetableSatelliteTrajectory.mat
+timetableSatelliteTrajectory_*.mat
+
+# OS files
+.DS_Store
+Thumbs.db
