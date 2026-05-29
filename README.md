@@ -21,40 +21,40 @@ NLS 非线性最小二乘 → 接收机位置 (x, y, z)
 | 文件 | 说明 |
 |------|------|
 | `kf_doppler_track.m` | **三阶 Kalman 滤波器**：状态 `[fD, fD_dot, fD_ddot]`，Wiener 过程加速度模型，可配置参数结构体 |
-| `verify_kf_sine.m` | KF 正弦波验证脚本：合成信号 5 项自动 PASS/FAIL 检查 |
+| `test_kf_sine.m` | KF 正弦波验证脚本：合成信号 5 项自动 PASS/FAIL 检查 |
 
-### Demo 脚本（按复杂度递增）
+### 主流程脚本（main_*.m）
 
 | 文件 | 说明 | 输入 |
 |------|------|------|
-| `demo_doppler_geometry.m` | 几何多普勒模型 + 仰角计算 | `traj_3Sat.mat` |
-| `demo_nls_single.m` | NLS 单点定位验证（无噪声） | `traj_3Sat.mat` |
-| `demo_nls_noise_scan.m` | 多普勒噪声 → 定位误差灵敏度扫描 | `traj_3Sat.mat` |
-| `demo_kf_v1_10s.m` | KF 首次尝试（T_sub=10s, 失败记录） | `traj_3Sat.mat` |
-| `demo_kf_nls_pipeline.m` | **Phase A 完整链路**：噪声 Doppler → KF 平滑 → NLS 定位 | `traj_3Sat_step02.mat` |
+| `main.m` | 几何多普勒模型 + 仰角计算 | `traj_3Sat.mat` |
+| `main_2.m` | NLS 单点定位验证（无噪声） | `traj_3Sat.mat` |
+| `main_3.m` | 多普勒噪声 → 定位误差灵敏度扫描 | `traj_3Sat.mat` |
+| `main_4.m` | KF 首次尝试（T_sub=10s, 失败记录） | `traj_3Sat.mat` |
+| `main_5.m` | **Phase A 完整链路**：噪声 Doppler → KF 平滑 → NLS 定位 | `traj_3Sat_step02.mat` |
 
 ### 轨迹生成
 
 | 文件 | 说明 |
 |------|------|
-| `gen_trajectory_3sat.m` | 生成 3 颗卫星 0.2s 间隔轨迹 → `traj_3Sat_step02.mat` |
-| `gen_trajectory_v2.m` | 生成 4 颗卫星 10s 间隔轨迹 |
-| `gen_trajectory_all.m` | 生成全部卫星 10s 间隔轨迹 |
+| `gen_tle_v3.m` | 生成 3 颗卫星 0.2s 间隔轨迹 → `traj_3Sat_step02.mat` |
+| `gen_tle_mat_v2.m` | 生成 4 颗卫星 10s 间隔轨迹 |
+| `generate_tle_mat.m` | 生成全部卫星 10s 间隔轨迹 |
 
 ### 文档
 
 | 文件 | 内容 |
 |------|------|
-| `docs_nls_workflow.md` | NLS 完整流程梳理（6 张流程图 + 数据维度流转） |
-| `docs_nls_derivation.md` | NLS 方程推导（Taylor 线性化 → Jacobian → Gauss-Newton） |
-| `docs_jacobian.md` | Jacobian 核心作用详解（物理含义 + 代码实现） |
+| `NLS_流程梳理.md` | NLS 完整流程梳理（6 张流程图 + 数据维度流转） |
+| `NLS_多普勒定位_方程推导.md` | NLS 方程推导（Taylor 线性化 → Jacobian → Gauss-Newton） |
+| `Jacobian 的核心作用.md` | Jacobian 核心作用详解（物理含义 + 代码实现） |
 
 ### 数据文件
 
 | 文件 | 说明 |
 |------|------|
 | `traj_3Sat.mat` | 3 颗卫星 10s 间隔轨迹（参考） |
-| `traj_3Sat_step02.mat` | **3 颗卫星 0.2s 间隔轨迹**（demo_kf_nls_pipeline 使用） |
+| `traj_3Sat_step02.mat` | **3 颗卫星 0.2s 间隔轨迹**（main_5 使用） |
 | `tle_starlink_2.txt` | 原始 TLE 两行轨道根数 |
 | `tle_starlink.tle` | TLE 参考文件 |
 
@@ -76,13 +76,13 @@ Wiener 过程加速度模型：`d(fD_ddot)/dt = sqrt(q_tilde) · w(t)`。离散�
 
 ```matlab
 % 1. 生成轨迹（如需重新生成）
-gen_trajectory_3sat
+gen_tle_v3
 
 % 2. 验证 KF 函数
-verify_kf_sine
+test_kf_sine
 
 % 3. 运行完整链路
-demo_kf_nls_pipeline
+main_5
 ```
 
 ## KF 函数接口
