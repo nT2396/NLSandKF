@@ -11,7 +11,7 @@ rng(42);
 %% ===== 参数配置 =====
 f_c = 11.325e9;  c_light = 299792458;
 el_threshold = 10;
-max_iter_ekf = 15;
+max_iter_ekf = 5;
 sigma_dop = 10;   % Hz, 多普勒测量噪声
 
 %% ===== 加载卫星轨迹 =====
@@ -83,32 +83,34 @@ fprintf('Doppler 范围: %.0f ~ %.0f kHz\n\n', min(doppler(:))/1e3, max(doppler(
 
 %% ===== EKF 参数 =====
 R = sigma_dop^2;       % 测量噪声协方差
-sigma_p0 = 10e3;       % 初始位置不确定度 10km
-sigma_v0 = 100;        % 初始速度不确定度 100 m/s
+
+% 初始不确定度: 模拟 GNSS 精度 (论文 Fig.6: GNSS可用期提供初始位置)
+sigma_p0 = 10;         % GNSS 定位精度 ~10m
+sigma_v0 = 1;          % 初始速度不确定度 ~1 m/s
 
 P0 = blkdiag(sigma_p0^2 * eye(3), sigma_v0^2 * eye(3));
 
 % 过程噪声: 离散白噪声加速度模型 (DWNA)
-q_acc = 0.1;  % (m/s²)²/Hz, 加速度过程噪声 PSD
+q_acc = 0.01;  % (m/s²)²/Hz, 加速度过程噪声 PSD (小值: 接收机基本匀速)
 dt = T_sub;
-Q_pos = q_acc * [dt^3/3, 0, 0, dt^2/2, 0, 0;
-                  0, dt^3/3, 0, 0, dt^2/2, 0;
-                  0, 0, dt^3/3, 0, 0, dt^2/2;
-                  dt^2/2, 0, 0, dt, 0, 0;
-                  0, dt^2/2, 0, 0, dt, 0;
-                  0, 0, dt^2/2, 0, 0, dt];
+Q_pos = [dt^3/3, 0, 0, dt^2/2, 0, 0;
+          0, dt^3/3, 0, 0, dt^2/2, 0;
+          0, 0, dt^3/3, 0, 0, dt^2/2;
+          dt^2/2, 0, 0, dt, 0, 0;
+          0, dt^2/2, 0, 0, dt, 0;
+          0, 0, dt^2/2, 0, 0, dt];
 Q = q_acc * Q_pos;
 
-fprintf('===== EKF 参数 =====\n');
-fprintf('sigma_p0 = %.0f km,  sigma_v0 = %.0f m/s\n', sigma_p0/1e3, sigma_v0);
-fprintf('q_acc = %.1f (m/s²)²/Hz\n', q_acc);
+fprintf('===== EKF 参数 (论文 GNSS-aided 初始化) =====\n');
+fprintf('sigma_p0 = %.0f m (GNSS 精度),  sigma_v0 = %.0f m/s\n', sigma_p0, sigma_v0);
+fprintf('q_acc = %.2f (m/s²)²/Hz\n', q_acc);
 fprintf('σ_Dop  = %.0f Hz\n\n', sigma_dop);
 
 %% ===== EKF 递推 =====
 
-% 初始状态: 真值 + 偏差
+% 初始状态: GNSS 最后定位 + 小偏差 (论文 Fig.6 GNSS可用期→初始状态)
 rng(1);
-x_post = [p_start + sigma_p0 * randn(1,3),  zeros(1,3)];  % 1×6
+x_post = [p_start + sigma_p0 * randn(1,3),  v_u_true(1,:) + sigma_v0 * randn(1,3)];  % 1×6
 P_post = P0;
 
 pos_est  = zeros(N_t, 3);
@@ -182,8 +184,8 @@ for k = 1:N_t
     err_vel(k)    = norm(x_post(4:6) - v_u_true(k,:));
 end
 
-fprintf('===== EKF 定位结果 =====\n');
-fprintf('初始位置误差: %.1f km\n', err_pos(1)/1e3);
+fprintf('===== EKF 定位结果 (GNSS 初始化+LEO Doppler 维持) =====\n');
+fprintf('初始位置误差: %.1f m (GNSS 精度)\n', err_pos(1));
 fprintf('最终位置误差: %.1f m\n', err_pos(end));
 fprintf('最终速度误差: %.2f m/s\n', err_vel(end));
 fprintf('总测量次数:   %d (仰角>%d°)\n', meas_cnt, el_threshold);
@@ -198,7 +200,7 @@ semilogy(t_sec, err_pos, 'b-', 'LineWidth', 1.5);  hold on;
 yline(10, 'r--', 'LineWidth', 1);
 yline(100, 'r:', 'LineWidth', 0.8);
 xlabel('时间 (s)');  ylabel('3D 位置误差 (m)');
-title(sprintf('位置收敛: %.0f km → %.1f m', err_pos(1)/1e3, err_pos(end)));
+title(sprintf('位置误差: %.1f m → %.1f m (GNSS→LEO维持)', err_pos(1), err_pos(end)));
 legend('位置误差', '10m', '100m', 'Location', 'northeast');
 grid on;
 
@@ -241,7 +243,7 @@ plot(pos_enu_true(:,1), pos_enu_true(:,2), 'k-', 'LineWidth', 2);
 plot(pos_enu_true(end,1), pos_enu_true(end,2), 'ks', 'MarkerSize', 10, 'LineWidth', 2);
 xlabel('东向 (m)');  ylabel('北向 (m)');
 title('ENU 轨迹估计');
-legend('EKF 起始 (50km 偏差)', 'EKF 收敛路径', '真值(匀速向东)', '终点', 'Location', 'best');
+legend('EKF 起始 (GNSS)', 'EKF 轨迹', '真值(匀速向东)', '终点', 'Location', 'best');
 grid on;  axis equal;
 
 % --- (4,2) 3D 真实 vs 估计运动 ---
@@ -269,5 +271,5 @@ title('3D 视图: 卫星轨迹(灰) + 接收机轨迹(黑)');
 legend('Sat59', 'Sat74', 'Sat86', '接收机真值', 'EKF 终点', 'Location', 'best');
 grid on;  view(45, 30);
 
-sgtitle(sprintf('EKF 实时定位: 直线运动接收机 (v=%.0f m/s, T_{sub}=%.1fs, σ_{Dop}=%.0f Hz)', ...
+sgtitle(sprintf('EKF 实时定位: 直线运动接收机 (GNSS初始化, v=%.0f m/s, T_{sub}=%.1fs, σ_{Dop}=%.0f Hz)', ...
     v_true, T_sub, sigma_dop));
