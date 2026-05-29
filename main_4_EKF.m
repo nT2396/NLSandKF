@@ -108,9 +108,8 @@ fprintf('σ_Dop  = %.0f Hz\n\n', sigma_dop);
 
 %% ===== EKF 递推 =====
 
-% 初始状态: GNSS 最后定位 + 小偏差 (论文 Fig.6 GNSS可用期→初始状态)
-rng(1);
-x_post = [p_start + sigma_p0 * randn(1,3),  v_u_true(1,:) + sigma_v0 * randn(1,3)];  % 1×6
+% 初始状态: GNSS 提供精确初始状态 (验证 EKF 维持能力)
+x_post = [p_start,  v_u_true(1,:)];  % 1×6, 真值无噪声
 P_post = P0;
 
 pos_est  = zeros(N_t, 3);
